@@ -1,0 +1,42 @@
+-- Tạo cơ sở dữ liệu zk_proof
+CREATE DATABASE IF NOT EXISTS zk_proof;
+USE zk_proof;
+
+-- Tạo bảng người dùng
+CREATE TABLE user (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    email VARCHAR(255) UNIQUE NOT NULL,
+    password VARCHAR(255) NOT NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Tạo bảng vai trò
+CREATE TABLE role (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    name VARCHAR(50) UNIQUE NOT NULL
+);
+
+-- Chèn sẵn các vai trò: IT, HR, Finance, Admin
+INSERT INTO role (name) VALUES
+('IT'),
+('HR'),
+('Finance'),
+('Admin');
+
+-- Tạo bảng liên kết người dùng và vai trò
+CREATE TABLE userrole (
+    user_id INT,
+    role_id INT,
+    PRIMARY KEY (user_id, role_id),
+    FOREIGN KEY (user_id) REFERENCES user(id) ON DELETE CASCADE,
+    FOREIGN KEY (role_id) REFERENCES role(id) ON DELETE CASCADE
+);
+
+-- Thêm người dùng mẫu
+INSERT INTO user (email, password) VALUES
+('thanh@gmail.com', '123');
+
+-- Gán vai trò cho người dùng (ví dụ: IT = 1, Admin = 4)
+INSERT INTO userrole (user_id, role_id) VALUES
+(1, 1), -- IT
+(1, 4); -- Admin
