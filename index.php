@@ -25,38 +25,57 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if (empty($email) || empty($password) || empty($role)) {
         $error = 'Vui lòng nhập đầy đủ thông tin!';
     } else {
-        // Băm mật khẩu người dùng nhập để so với password_hash đã lưu
-        $hashedPassword = hash('sha256', $password); // Giả sử bạn dùng SHA-256 để lưu password
-
-        // Truy vấn: email + mật khẩu + vai trò
+        // Truy vấn người dùng theo email
         $sql = "
-            SELECT u.id, u.email, r.name AS role_name
+            SELECT u.id, u.email, u.password, r.name AS role_name
             FROM user u
             JOIN userrole ur ON u.id = ur.user_id
             JOIN role r ON ur.role_id = r.id
-            WHERE u.email = ? AND u.password = ? AND r.name = ?
+            WHERE u.email = ?
         ";
-
         $stmt = $conn->prepare($sql);
-        $stmt->execute([$email, $hashedPassword, $role]);
-        $user = $stmt->fetch(PDO::FETCH_ASSOC);
+        $stmt->execute([$email]);
+        $users = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
-        if ($user) {
-            // Lưu session
-            $_SESSION['user_id'] = $user['id'];
-            $_SESSION['role']    = $user['role_name'];
+        if ($users) {
+            $validPassword = false;
+            $matchedRole = false;
+            $matchedUser = null;
 
-            // Điều hướng theo vai trò
-            switch ($role) {
-                case 'Admin':   header('Location: admin-dashboard.html');   break;
-                case 'IT':      header('Location: it_department.html');     break;
-                case 'HR':      header('Location: hr-dashboard.html');      break;
-                case 'Finance': header('Location: finance-dashboard.html'); break;
-                default:        header('Location: index.html');             break;
+            foreach ($users as $user) {
+                if ($password === $user['password']) { // Nếu dùng password_hash thì thay bằng password_verify
+                    $validPassword = true;
+
+                    if ($user['role_name'] === $role) {
+                        $matchedRole = true;
+                        $matchedUser = $user;
+                        break;
+                    }
+                }
             }
-            exit;
+
+            if (!$validPassword) {
+                $error = 'Sai email hoặc mật khẩu!';
+            } elseif (!$matchedRole) {
+                $error = 'Bạn không có quyền truy cập!';
+            } else {
+                // Đăng nhập thành công
+                $_SESSION['user_id'] = $matchedUser['id'];
+                $_SESSION['role']    = $matchedUser['role_name'];
+
+                // Điều hướng theo vai trò
+                switch ($role) {
+                    case 'Admin':   header('Location: admin-dashboard.html');   break;
+                    case 'IT':      header('Location: it_department.html');     break;
+                    case 'HR':      header('Location: hr-dashboard.html');      break;
+                    case 'Finance': header('Location: finance-dashboard.html'); break;
+                    default:        header('Location: index.html');             break;
+                }
+                exit;
+            }
         } else {
-            $error = 'Sai email, mật khẩu hoặc vai trò!';
+            // Không có user nào với email đó
+            $error = 'Sai email hoặc mật khẩu!';
         }
     }
 }
@@ -67,7 +86,6 @@ if (!empty($error)) {
 }
 ?>
 
-<!-- HTML UI (như bạn gửi) -->
 <!DOCTYPE html>
 <html lang="vi">
 <head>
